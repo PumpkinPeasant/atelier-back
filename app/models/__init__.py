@@ -1,7 +1,9 @@
 from app.models.admin import Admin
 from app.models.client import Client
+from app.models.color import Color
 from app.models.material import Material
 from app.models.order import Order, OrderStatus
+from app.models.size import Size
 from app.models.product import (
     Fit,
     Gender,
@@ -14,6 +16,8 @@ from app.models.product import (
 __all__ = [
     "Admin",
     "Client",
+    "Color",
+    "Size",
     "Order",
     "OrderStatus",
     "Material",
