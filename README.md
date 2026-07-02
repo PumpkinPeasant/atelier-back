@@ -41,7 +41,10 @@ cp .env.example .env   # отредактировать доступы к Postgr
 # 3. Миграции (нужен запущенный PostgreSQL)
 alembic upgrade head
 
-# 4. Запуск dev-сервера
+# 4. Администратор для входа в админку
+python -m scripts.create_admin admin@atelier.io <password>
+
+# 5. Запуск dev-сервера
 python main.py
 # или: uvicorn app.main:app --reload
 ```
@@ -49,6 +52,31 @@ python main.py
 - API: http://localhost:8000/api
 - Swagger UI: http://localhost:8000/docs
 - Health: http://localhost:8000/api/health
+
+## Группы эндпоинтов
+
+**Публичные (витрина)** — без авторизации:
+
+- `GET /api/catalog/products` — каталог товаров (фильтр `?category=`)
+- `GET /api/catalog/products/{id}` — карточка товара
+- `GET /api/health`
+
+**Админские** `/api/admin/*` — требуют авторизации (кроме login/refresh/logout):
+
+- `POST /api/admin/auth/login` — вход, ставит httpOnly-cookie `access_token` (15 мин)
+  и `refresh_token` (7 дней)
+- `POST /api/admin/auth/refresh` — обновление токенов по refresh-cookie
+- `POST /api/admin/auth/logout` — сброс cookie
+- `GET  /api/admin/auth/me` — текущий админ
+- CRUD: `/api/admin/products`, `/api/admin/materials`,
+  `/api/admin/clients`, `/api/admin/orders`
+
+## Авторизация
+
+JWT access + refresh токены передаются в **httpOnly-cookie** (недоступны из JS,
+защита от XSS). Access живёт 15 мин, refresh — 7 дней (настраивается в `.env`).
+Access-токен проверяется зависимостью `get_current_admin` для всех защищённых
+эндпоинтов. В проде обязательно задать `SECRET_KEY` и `COOKIE_SECURE=true` (HTTPS).
 
 ## Миграции
 

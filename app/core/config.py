@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str = "atelier"
 
+    # Auth / JWT. ОБЯЗАТЕЛЬНО переопределить secret_key в проде.
+    secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
+    # Cookie-настройки. secure=True требуется для прода (HTTPS).
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"
+
     @computed_field
     @property
     def database_url(self) -> str:
