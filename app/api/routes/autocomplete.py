@@ -9,9 +9,11 @@ from enum import Enum
 from fastapi import APIRouter
 
 from app.api.deps import SessionDep
+from app.crud import category_group as category_group_crud
 from app.crud import color as color_crud
 from app.crud import size as size_crud
 from app.models.product import Fit, ProductCategory
+from app.schemas.category import CategoryGroupTree
 from app.schemas.lookup import AutocompleteOption
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
@@ -64,3 +66,9 @@ async def colors(session: SessionDep, q: str | None = None, limit: int = 20):
 async def sizes(session: SessionDep, q: str | None = None, limit: int = 20):
     items = await size_crud.search(session, q, limit)
     return [AutocompleteOption(value=str(s.id), label=s.name) for s in items]
+
+
+@router.get("/category-groups", response_model=list[CategoryGroupTree])
+async def category_groups(session: SessionDep):
+    """Справочник категорий, сгруппированный: группы с вложенными категориями."""
+    return await category_group_crud.list_(session)

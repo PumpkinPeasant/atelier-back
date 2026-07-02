@@ -2,7 +2,16 @@ from fastapi import APIRouter, Depends
 
 from app.api.admin import auth
 from app.api.deps import get_current_admin
-from app.api.routes import clients, colors, materials, orders, products, sizes
+from app.api.routes import (
+    categories,
+    category_groups,
+    clients,
+    colors,
+    materials,
+    orders,
+    products,
+    sizes,
+)
 
 admin_router = APIRouter(prefix="/admin")
 
@@ -16,6 +25,8 @@ _protected.include_router(products.router)
 _protected.include_router(materials.router)
 _protected.include_router(colors.router)
 _protected.include_router(sizes.router)
+_protected.include_router(category_groups.router)
+_protected.include_router(categories.router)
 _protected.include_router(clients.router)
 _protected.include_router(orders.router)
 admin_router.include_router(_protected)

@@ -66,6 +66,8 @@ python main.py
 - Автокомплит для селектов (формат `{value, label}`, поиск `?q=`, `?limit=`):
   `GET /api/lookups/categories`, `/api/lookups/types` (fit),
   `/api/lookups/colors`, `/api/lookups/sizes`
+- `GET /api/lookups/category-groups` — справочник категорий, сгруппированный
+  (группы с вложенными категориями)
 
 **Админские** `/api/admin/*` — требуют авторизации (кроме login/refresh/logout):
 
@@ -76,6 +78,7 @@ python main.py
 - `GET  /api/admin/auth/me` — текущий админ
 - CRUD: `/api/admin/products`, `/api/admin/materials`,
   `/api/admin/colors`, `/api/admin/sizes`,
+  `/api/admin/category-groups`, `/api/admin/categories`,
   `/api/admin/clients`, `/api/admin/orders`
 - Фото товара: `POST /api/admin/products/{id}/images` (multipart: `file`,
   опц. `is_main`), `DELETE /api/admin/products/{id}/images/{image_id}`

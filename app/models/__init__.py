@@ -1,4 +1,5 @@
 from app.models.admin import Admin
+from app.models.category import Category, CategoryGroup
 from app.models.client import Client
 from app.models.color import Color
 from app.models.material import Material
@@ -15,6 +16,8 @@ from app.models.product import (
 
 __all__ = [
     "Admin",
+    "CategoryGroup",
+    "Category",
     "Client",
     "Color",
     "Size",
