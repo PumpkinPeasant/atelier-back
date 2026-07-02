@@ -62,6 +62,7 @@ python main.py
 
 - `GET /api/catalog/products` — каталог товаров (фильтр `?category=`)
 - `GET /api/catalog/products/{id}` — карточка товара
+- `GET /api/catalog/products/by-slug/{slug}` — карточка товара по слагу
 - `GET /api/health`
 - Автокомплит для селектов (формат `{value, label}`, поиск `?q=`, `?limit=`):
   `GET /api/lookups/categories`, `/api/lookups/types` (fit),

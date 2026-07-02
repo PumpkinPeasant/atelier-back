@@ -19,6 +19,15 @@ async def list_catalog(
     return await crud.list_(session, skip=skip, limit=limit, category=category)
 
 
+@router.get("/products/by-slug/{slug}", response_model=ProductRead)
+async def get_catalog_product_by_slug(slug: str, session: SessionDep):
+    """Карточка товара по слагу."""
+    product = await crud.get_by_slug(session, slug)
+    if product is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+    return product
+
+
 @router.get("/products/{product_id}", response_model=ProductRead)
 async def get_catalog_product(product_id: int, session: SessionDep):
     """Карточка товара."""

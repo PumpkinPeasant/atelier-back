@@ -60,5 +60,6 @@ class ProductRead(ProductBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    slug: str | None = None
     composition: list[CompositionRead] = Field(default_factory=list)
     images: list[ProductImageRead] = Field(default_factory=list)

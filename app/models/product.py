@@ -33,6 +33,10 @@ class Product(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Слаг «название-номер». Заполняется после получения id (см. crud.product).
+    slug: Mapped[str | None] = mapped_column(
+        String(300), unique=True, index=True, nullable=True
+    )
     category: Mapped[ProductCategory] = mapped_column(
         Enum(ProductCategory, native_enum=False, length=32), nullable=False
     )
