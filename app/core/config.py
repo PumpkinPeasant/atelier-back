@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
 
+    # CORS: список origin'ов фронта через запятую. Со звёздочкой ("*")
+    # cookie не работают — нужны конкретные адреса.
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
     # S3 / MinIO. Для локалки — значения из docker-compose.
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "minioadmin"
@@ -45,6 +49,16 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @computed_field
+    @property
+    def cors_origins_list(self) -> list[str]:
+        # Origin приходит без завершающего слэша — срезаем его на всякий случай.
+        return [
+            o.strip().rstrip("/")
+            for o in self.cors_origins.split(",")
+            if o.strip()
+        ]
 
     @computed_field
     @property
