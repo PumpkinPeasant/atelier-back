@@ -38,7 +38,10 @@ pip install -r requirements.txt
 # 2. Настройки
 cp .env.example .env   # отредактировать доступы к PostgreSQL
 
-# 3. Миграции (нужен запущенный PostgreSQL)
+# 2.1 Инфраструктура для локалки: PostgreSQL + MinIO (бакет создаётся автоматически)
+docker compose up -d
+
+# 3. Миграции
 alembic upgrade head
 
 # 4. Администратор для входа в админку
@@ -70,6 +73,21 @@ python main.py
 - `GET  /api/admin/auth/me` — текущий админ
 - CRUD: `/api/admin/products`, `/api/admin/materials`,
   `/api/admin/clients`, `/api/admin/orders`
+- Фото товара: `POST /api/admin/products/{id}/images` (multipart: `file`,
+  опц. `is_main`), `DELETE /api/admin/products/{id}/images/{image_id}`
+
+## Хранение фото (S3 / MinIO)
+
+Файлы фото лежат в S3-совместимом хранилище, в БД — только ключ и публичный URL
+(таблица `product_images`, много фото на товар). Локально поднимается **MinIO**
+через `docker compose up -d`:
+
+- S3 API: http://localhost:9000, веб-консоль: http://localhost:9001 (minioadmin/minioadmin)
+- Бакет `atelier` создаётся автоматически и раздаётся публично на чтение
+- Загрузка: только JPEG/PNG/WEBP, до 10 MB; ключ вида `products/{id}/{uuid}.ext`
+
+В проде укажите в `.env` реальный `S3_ENDPOINT_URL`/ключи/бакет и `S3_PUBLIC_URL`
+(например, CDN). Ресайз и превью пока не делаются — файл сохраняется как есть.
 
 ## Авторизация
 

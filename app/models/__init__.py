@@ -7,6 +7,7 @@ from app.models.product import (
     Gender,
     Product,
     ProductCategory,
+    ProductImage,
     ProductMaterial,
 )
 
@@ -18,6 +19,7 @@ __all__ = [
     "Material",
     "Product",
     "ProductMaterial",
+    "ProductImage",
     "ProductCategory",
     "Gender",
     "Fit",

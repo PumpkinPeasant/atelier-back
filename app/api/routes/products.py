@@ -1,17 +1,31 @@
-from fastapi import APIRouter, HTTPException, status
+from uuid import uuid4
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 
 from app.api.deps import SessionDep
+from app.core import storage
 from app.crud import material as material_crud
 from app.crud import product as crud
+from app.crud import product_image as image_crud
 from app.models.product import ProductCategory
 from app.schemas.product import (
     CompositionItem,
     ProductCreate,
+    ProductImageRead,
     ProductRead,
     ProductUpdate,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+# Разрешённые типы изображений и максимальный размер файла.
+_IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 async def _validate_composition(
@@ -82,4 +96,54 @@ async def delete_product(product_id: int, session: SessionDep):
     product = await crud.get(session, product_id)
     if product is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+    # Удаляем файлы из S3 до удаления товара (в БД строки уйдут по каскаду).
+    for image in product.images:
+        await run_in_threadpool(storage.delete_object, image.key)
     await crud.delete(session, product)
+
+
+@router.post(
+    "/{product_id}/images",
+    response_model=ProductImageRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_product_image(
+    product_id: int,
+    session: SessionDep,
+    file: UploadFile = File(...),
+    is_main: bool = Form(False),
+):
+    product = await crud.get(session, product_id)
+    if product is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+
+    ext = _IMAGE_EXTENSIONS.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Only JPEG, PNG or WEBP images are allowed",
+        )
+
+    data = await file.read()
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image is too large (max 10 MB)"
+        )
+
+    key = f"products/{product_id}/{uuid4().hex}{ext}"
+    await run_in_threadpool(storage.upload_bytes, key, data, file.content_type)
+
+    return await image_crud.create(
+        session, product_id, key, storage.public_url(key), is_main
+    )
+
+
+@router.delete(
+    "/{product_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_product_image(product_id: int, image_id: int, session: SessionDep):
+    image = await image_crud.get(session, image_id)
+    if image is None or image.product_id != product_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
+    await run_in_threadpool(storage.delete_object, image.key)
+    await image_crud.delete(session, image)

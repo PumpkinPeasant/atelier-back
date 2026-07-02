@@ -21,6 +21,15 @@ class CompositionRead(BaseModel):
     material: MaterialRead
 
 
+class ProductImageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+    sort_order: int
+    is_main: bool
+
+
 class ProductBase(BaseModel):
     name: str
     category: ProductCategory
@@ -52,3 +61,4 @@ class ProductRead(ProductBase):
 
     id: int
     composition: list[CompositionRead] = Field(default_factory=list)
+    images: list[ProductImageRead] = Field(default_factory=list)

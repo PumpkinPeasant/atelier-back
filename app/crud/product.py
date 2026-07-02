@@ -5,10 +5,11 @@ from sqlalchemy.orm import selectinload
 from app.models.product import Product, ProductCategory, ProductMaterial
 from app.schemas.product import CompositionItem, ProductCreate, ProductUpdate
 
-# Полная загрузка состава вместе с материалами, чтобы избежать ленивой
-# подгрузки в async-контексте (MissingGreenlet).
-_WITH_COMPOSITION = selectinload(Product.composition).selectinload(
-    ProductMaterial.material
+# Полная загрузка связей (состав с материалами + фото), чтобы избежать
+# ленивой подгрузки в async-контексте (MissingGreenlet).
+_WITH_RELATIONS = (
+    selectinload(Product.composition).selectinload(ProductMaterial.material),
+    selectinload(Product.images),
 )
 
 
@@ -23,7 +24,7 @@ async def _get_full(session: AsyncSession, product_id: int) -> Product | None:
     stmt = (
         select(Product)
         .where(Product.id == product_id)
-        .options(_WITH_COMPOSITION)
+        .options(*_WITH_RELATIONS)
         .execution_options(populate_existing=True)
     )
     result = await session.execute(stmt)
@@ -40,7 +41,7 @@ async def list_(
     limit: int = 100,
     category: ProductCategory | None = None,
 ) -> list[Product]:
-    stmt = select(Product).options(_WITH_COMPOSITION)
+    stmt = select(Product).options(*_WITH_RELATIONS)
     if category is not None:
         stmt = stmt.where(Product.category == category)
     result = await session.execute(stmt.offset(skip).limit(limit))
