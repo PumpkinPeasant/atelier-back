@@ -1,13 +1,23 @@
 import enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.card import ProductCard
+    from app.models.color import Color
     from app.models.material import Material
+    from app.models.size import Size
 
 
 class ProductCategory(str, enum.Enum):
@@ -29,14 +39,16 @@ class Fit(str, enum.Enum):
 
 
 class Product(Base, TimestampMixin):
+    """Товар-справочник: родительская бизнес-сущность (напр. «Футболка»).
+
+    Витрина (slug, описание, фото, статус публикации) вынесена в ProductCard,
+    конкретные SKU (цвет × размер) — в ProductVariant.
+    """
+
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    # Слаг «название-номер». Заполняется после получения id (см. crud.product).
-    slug: Mapped[str | None] = mapped_column(
-        String(300), unique=True, index=True, nullable=True
-    )
     category: Mapped[ProductCategory] = mapped_column(
         Enum(ProductCategory, native_enum=False, length=32), nullable=False
     )
@@ -48,7 +60,7 @@ class Product(Base, TimestampMixin):
     )
     # Плотность ткани, г/м² (GSM).
     density: Mapped[int] = mapped_column(Integer, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Базовая (бизнес) цена. Публичную цену может переопределить карточка/вариант.
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
 
     composition: Mapped[list["ProductMaterial"]] = relationship(
@@ -56,10 +68,16 @@ class Product(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    images: Mapped[list["ProductImage"]] = relationship(
+    variants: Mapped[list["ProductVariant"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
-        order_by="ProductImage.sort_order",
+        order_by="ProductVariant.id",
+        lazy="selectin",
+    )
+    card: Mapped["ProductCard | None"] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        uselist=False,
         lazy="selectin",
     )
 
@@ -84,20 +102,31 @@ class ProductMaterial(Base):
     )
 
 
-class ProductImage(Base, TimestampMixin):
-    """Фото товара. Файл лежит в S3, здесь — ключ и публичный URL."""
+class ProductVariant(Base, TimestampMixin):
+    """Вариант товара (SKU): конкретное сочетание цвета и размера."""
 
-    __tablename__ = "product_images"
+    __tablename__ = "product_variants"
+    __table_args__ = (
+        UniqueConstraint("product_id", "color_id", "size_id", name="uq_variant"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    key: Mapped[str] = mapped_column(String(512), nullable=False)
-    url: Mapped[str] = mapped_column(String(1024), nullable=False)
-    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    is_main: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default="false", nullable=False
+    color_id: Mapped[int] = mapped_column(
+        ForeignKey("colors.id", ondelete="RESTRICT"), nullable=False
     )
+    size_id: Mapped[int] = mapped_column(
+        ForeignKey("sizes.id", ondelete="RESTRICT"), nullable=False
+    )
+    # Артикул конкретного SKU (опц.).
+    sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Остаток на складе (опц., None = не отслеживается).
+    stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Переопределение цены для конкретного SKU (опц.).
+    price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
-    product: Mapped["Product"] = relationship(back_populates="images")
+    product: Mapped["Product"] = relationship(back_populates="variants")
+    color: Mapped["Color"] = relationship(lazy="selectin")
+    size: Mapped["Size"] = relationship(lazy="selectin")

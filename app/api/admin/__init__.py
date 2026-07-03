@@ -9,6 +9,7 @@ from app.api.routes import (
     colors,
     materials,
     orders,
+    product_cards,
     products,
     sizes,
 )
@@ -22,6 +23,7 @@ admin_router.include_router(auth.router)
 # Остальные админские ресурсы требуют валидный access-токен.
 _protected = APIRouter(dependencies=[Depends(get_current_admin)])
 _protected.include_router(products.router)
+_protected.include_router(product_cards.router)
 _protected.include_router(materials.router)
 _protected.include_router(colors.router)
 _protected.include_router(sizes.router)

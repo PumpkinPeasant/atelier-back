@@ -1,19 +1,17 @@
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.product import ProductImage
+from app.models.card import ProductImage
 
 
 async def get(session: AsyncSession, image_id: int) -> ProductImage | None:
     return await session.get(ProductImage, image_id)
 
 
-async def list_for_product(
-    session: AsyncSession, product_id: int
-) -> list[ProductImage]:
+async def list_for_card(session: AsyncSession, card_id: int) -> list[ProductImage]:
     result = await session.execute(
         select(ProductImage)
-        .where(ProductImage.product_id == product_id)
+        .where(ProductImage.card_id == card_id)
         .order_by(ProductImage.sort_order)
     )
     return list(result.scalars().all())
@@ -21,26 +19,28 @@ async def list_for_product(
 
 async def create(
     session: AsyncSession,
-    product_id: int,
+    card_id: int,
     key: str,
     url: str,
     is_main: bool = False,
+    color_id: int | None = None,
 ) -> ProductImage:
     if is_main:
-        # Главное фото — только одно на товар.
+        # Главное фото — только одно на карточку.
         await session.execute(
             update(ProductImage)
-            .where(ProductImage.product_id == product_id)
+            .where(ProductImage.card_id == card_id)
             .values(is_main=False)
         )
 
     max_order = await session.scalar(
         select(func.coalesce(func.max(ProductImage.sort_order), -1)).where(
-            ProductImage.product_id == product_id
+            ProductImage.card_id == card_id
         )
     )
     image = ProductImage(
-        product_id=product_id,
+        card_id=card_id,
+        color_id=color_id,
         key=key,
         url=url,
         is_main=is_main,

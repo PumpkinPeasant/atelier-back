@@ -2,21 +2,40 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.slug import make_slug
-from app.models.product import Product, ProductCategory, ProductMaterial
-from app.schemas.product import CompositionItem, ProductCreate, ProductUpdate
+from app.models.product import (
+    Product,
+    ProductCategory,
+    ProductMaterial,
+    ProductVariant,
+)
+from app.schemas.product import CompositionItem, ProductCreate, ProductUpdate, VariantItem
 
-# Полная загрузка связей (состав с материалами + фото), чтобы избежать
-# ленивой подгрузки в async-контексте (MissingGreenlet).
+# Полная загрузка связей (состав + варианты с цветом/размером + карточка),
+# чтобы избежать ленивой подгрузки в async-контексте (MissingGreenlet).
 _WITH_RELATIONS = (
     selectinload(Product.composition).selectinload(ProductMaterial.material),
-    selectinload(Product.images),
+    selectinload(Product.variants).selectinload(ProductVariant.color),
+    selectinload(Product.variants).selectinload(ProductVariant.size),
+    selectinload(Product.card),
 )
 
 
 def _build_composition(items: list[CompositionItem]) -> list[ProductMaterial]:
     return [
         ProductMaterial(material_id=item.material_id, percent=item.percent)
+        for item in items
+    ]
+
+
+def _build_variants(items: list[VariantItem]) -> list[ProductVariant]:
+    return [
+        ProductVariant(
+            color_id=item.color_id,
+            size_id=item.size_id,
+            sku=item.sku,
+            stock=item.stock,
+            price=item.price,
+        )
         for item in items
     ]
 
@@ -36,12 +55,6 @@ async def get(session: AsyncSession, product_id: int) -> Product | None:
     return await _get_full(session, product_id)
 
 
-async def get_by_slug(session: AsyncSession, slug: str) -> Product | None:
-    stmt = select(Product).where(Product.slug == slug).options(*_WITH_RELATIONS)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
-
-
 async def list_(
     session: AsyncSession,
     skip: int = 0,
@@ -56,11 +69,12 @@ async def list_(
 
 
 async def create(session: AsyncSession, data: ProductCreate) -> Product:
-    payload = data.model_dump(exclude={"composition"})
-    product = Product(**payload, composition=_build_composition(data.composition))
+    product = Product(
+        **data.model_dump(exclude={"composition", "variants"}),
+        composition=_build_composition(data.composition),
+        variants=_build_variants(data.variants),
+    )
     session.add(product)
-    await session.flush()  # получаем id для номера в слаге
-    product.slug = make_slug(product.name, product.id)
     await session.commit()
     return await _get_full(session, product.id)
 
@@ -68,14 +82,13 @@ async def create(session: AsyncSession, data: ProductCreate) -> Product:
 async def update(
     session: AsyncSession, product: Product, data: ProductUpdate
 ) -> Product:
-    payload = data.model_dump(exclude_unset=True, exclude={"composition"})
+    payload = data.model_dump(exclude_unset=True, exclude={"composition", "variants"})
     for field, value in payload.items():
         setattr(product, field, value)
-    # При переименовании держим слаг в синхроне с названием (номер = id).
-    if "name" in payload:
-        product.slug = make_slug(product.name, product.id)
     if data.composition is not None:
         product.composition = _build_composition(data.composition)
+    if data.variants is not None:
+        product.variants = _build_variants(data.variants)
     await session.commit()
     return await _get_full(session, product.id)
 

@@ -26,6 +26,13 @@ async def search(
     return list(result.scalars().all())
 
 
+async def existing_ids(session: AsyncSession, ids: set[int]) -> set[int]:
+    if not ids:
+        return set()
+    result = await session.execute(select(Color.id).where(Color.id.in_(ids)))
+    return set(result.scalars().all())
+
+
 async def create(session: AsyncSession, data: ColorCreate) -> Color:
     color = Color(**data.model_dump())
     session.add(color)

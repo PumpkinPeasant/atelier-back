@@ -1,4 +1,5 @@
 from app.models.admin import Admin
+from app.models.card import CardStatus, ProductCard, ProductImage
 from app.models.category import Category, CategoryGroup
 from app.models.client import Client
 from app.models.color import Color
@@ -10,8 +11,8 @@ from app.models.product import (
     Gender,
     Product,
     ProductCategory,
-    ProductImage,
     ProductMaterial,
+    ProductVariant,
 )
 
 __all__ = [
@@ -26,7 +27,10 @@ __all__ = [
     "Material",
     "Product",
     "ProductMaterial",
+    "ProductVariant",
+    "ProductCard",
     "ProductImage",
+    "CardStatus",
     "ProductCategory",
     "Gender",
     "Fit",
